@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from encodings.punycode import T
 from fastapi import Depends, FastAPI,HTTPException,Request, Response
-from typing import Any, Annotated
+from typing import Any, Annotated, Generic
 from random import randint
+from pydantic import BaseModel
 from sqlmodel import Field, Session, create_engine, SQLModel, select
 
 class Campaign(SQLModel,table=True):
@@ -59,11 +61,24 @@ data:Any=[
 async def root():
     return {'message':'Hello world'}
 
+class CampaignResponse(BaseModel,Generic[T]): # type: ignore
+    campaigns: T
 
+@app.get('/campaigns',response_model=CampaignResponse)
+async def read_campaigns(session:SessionDep):
+    data=session.exec(select(Campaign)).all()
+    return {'campaign':data}
 
-# @app.get('/campaigns')
-# async def read_campaign():
-#     return {'campaign':data}
+@app.get('/campaigns/{id}')
+async def read_campaign(id:int,session:SessionDep):
+    data=session.get(Campaign,id)
+    if not data:
+        raise HTTPException(status_code=404)
+    return {'campaign':data}
+
+@app.get('/campaigns')
+async def read_campaign():
+    return {'campaign':data}
 
 # @app.get('/campaigns/{id}')
 # async def read_campaign(id:int):
